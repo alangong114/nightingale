@@ -164,7 +164,6 @@ func handleOpenTSDB(c *gin.Context) {
 		succ int
 		fail int
 		msg  = "data pushed to queue"
-		list = make([]interface{}, 0, len(arr))
 		ts   = time.Now().Unix()
 		ids  = make(map[string]interface{})
 	)
@@ -191,18 +190,17 @@ func handleOpenTSDB(c *gin.Context) {
 			if has {
 				common.AppendLabels(pt, target)
 			}
+
+			writer.Writers.PushSample(host, pt)
+		} else {
+			writer.Writers.PushSample("default_hash_string", pt)
 		}
 
-		list = append(list, pt)
 		succ++
 	}
 
-	if len(list) > 0 {
-		promstat.CounterSampleTotal.WithLabelValues(config.C.ClusterName, "opentsdb").Add(float64(len(list)))
-		if !writer.Writers.PushQueue(list) {
-			msg = "writer queue full"
-		}
-
+	if succ > 0 {
+		promstat.CounterSampleTotal.WithLabelValues(config.C.ClusterName, "opentsdb").Add(float64(succ))
 		idents.Idents.MSet(ids)
 	}
 

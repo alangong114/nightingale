@@ -80,7 +80,7 @@ services:
       - "server"
 
   nwebapi:
-    image: ulric2019/nightingale:5.5.0
+    image: ulric2019/nightingale:5.6.0
     container_name: nwebapi
     hostname: nwebapi
     restart: always
@@ -108,7 +108,7 @@ services:
       - "webapi"
 
   nserver:
-    image: ulric2019/nightingale:5.5.0
+    image: ulric2019/nightingale:5.6.0
     container_name: nserver
     hostname: nserver
     restart: always

@@ -4,7 +4,7 @@ drop database if exists n9e_v5;
 create database n9e_v5;
 use n9e_v5;
 
-CREATE TABLE `user` (
+CREATE TABLE `users` (
     `id` bigint unsigned not null auto_increment,
     `username` varchar(64) not null comment 'login name, cannot rename',
     `nickname` varchar(64) not null comment 'display name, chinese name',
@@ -22,7 +22,7 @@ CREATE TABLE `user` (
     UNIQUE KEY (`username`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
 
-insert into `user`(id, username, nickname, password, roles, create_at, create_by, update_at, update_by) values(1, 'root', '超管', 'root.2020', 'Admin', unix_timestamp(now()), 'system', unix_timestamp(now()), 'system');
+insert into `users`(id, username, nickname, password, roles, create_at, create_by, update_at, update_by) values(1, 'root', '超管', 'root.2020', 'Admin', unix_timestamp(now()), 'system', unix_timestamp(now()), 'system');
 
 CREATE TABLE `user_group` (
     `id` bigint unsigned not null auto_increment,
@@ -308,6 +308,8 @@ CREATE TABLE `metric_view` (
     KEY (`create_by`)
 ) ENGINE=InnoDB DEFAULT CHARSET = utf8mb4;
 
+insert into metric_view(name, cate, configs) values('Host View', 0, '{"filters":[{"oper":"=","label":"__name__","value":"cpu_usage_idle"}],"dynamicLabels":[],"dimensionLabels":[{"label":"ident","value":""}]}');
+
 CREATE TABLE `alert_aggr_view` (
     `id` bigint unsigned not null auto_increment,
     `name` varchar(191) not null default '',
@@ -320,8 +322,8 @@ CREATE TABLE `alert_aggr_view` (
     KEY (`create_by`)
 ) ENGINE=InnoDB DEFAULT CHARSET = utf8mb4;
 
-insert into alert_aggr_view(name, rule, cate) values('GroupBy BusiGroup, Severity', 'field:group_name::field:severity', 0);
-insert into alert_aggr_view(name, rule, cate) values('GroupBy Metric', 'tagkey:__name__', 0);
+insert into alert_aggr_view(name, rule, cate) values('By BusiGroup, Severity', 'field:group_name::field:severity', 0);
+insert into alert_aggr_view(name, rule, cate) values('By RuleName', 'field:rule_name', 0);
 
 CREATE TABLE `alert_cur_event` (
     `id` bigint unsigned not null comment 'use alert_his_event.id',

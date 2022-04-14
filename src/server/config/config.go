@@ -68,12 +68,21 @@ func MustLoad(fpaths ...string) {
 
 		if C.Heartbeat.IP == "" {
 			// auto detect
-			C.Heartbeat.IP = fmt.Sprint(GetOutboundIP())
+			// C.Heartbeat.IP = fmt.Sprint(GetOutboundIP())
+			// 自动获取IP在有些环境下容易出错，这里用hostname+pid来作唯一标识
 
-			if C.Heartbeat.IP == "" {
-				fmt.Println("heartbeat ip auto got is blank")
+			hostname, err := os.Hostname()
+			if err != nil {
+				fmt.Println("failed to get hostname:", err)
 				os.Exit(1)
 			}
+
+			C.Heartbeat.IP = hostname + "+" + fmt.Sprint(os.Getpid())
+
+			// if C.Heartbeat.IP == "" {
+			// 	fmt.Println("heartbeat ip auto got is blank")
+			// 	os.Exit(1)
+			// }
 		}
 
 		C.Heartbeat.Endpoint = fmt.Sprintf("%s:%d", C.Heartbeat.IP, C.HTTP.Port)
@@ -90,6 +99,18 @@ func MustLoad(fpaths ...string) {
 				}
 				C.Alerting.Webhook.TimeoutDuration = dur
 			}
+		}
+
+		if C.WriterOpt.QueueMaxSize <= 0 {
+			C.WriterOpt.QueueMaxSize = 10000000
+		}
+
+		if C.WriterOpt.QueuePopSize <= 0 {
+			C.WriterOpt.QueuePopSize = 1000
+		}
+
+		if C.WriterOpt.SleepInterval <= 0 {
+			C.WriterOpt.SleepInterval = 50
 		}
 
 		fmt.Println("heartbeat.ip:", C.Heartbeat.IP)

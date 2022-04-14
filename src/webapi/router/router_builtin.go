@@ -20,7 +20,7 @@ func alertRuleBuiltinList(c *gin.Context) {
 		fp = path.Join(runner.Cwd, "etc", "alerts")
 	}
 
-	files, err := file.DirsUnder(fp)
+	files, err := file.FilesUnder(fp)
 	ginx.Dangerous(err)
 
 	names := make([]string, 0, len(files))
@@ -30,7 +30,7 @@ func alertRuleBuiltinList(c *gin.Context) {
 			continue
 		}
 
-		name := strings.TrimRight(f, ".json")
+		name := strings.TrimSuffix(f, ".json")
 		names = append(names, name)
 	}
 
@@ -88,12 +88,12 @@ func alertRuleBuiltinImport(c *gin.Context) {
 }
 
 func dashboardBuiltinList(c *gin.Context) {
-	fp := config.C.BuiltinAlertsDir
+	fp := config.C.BuiltinDashboardsDir
 	if fp == "" {
 		fp = path.Join(runner.Cwd, "etc", "dashboards")
 	}
 
-	files, err := file.DirsUnder(fp)
+	files, err := file.FilesUnder(fp)
 	ginx.Dangerous(err)
 
 	names := make([]string, 0, len(files))
@@ -103,7 +103,7 @@ func dashboardBuiltinList(c *gin.Context) {
 			continue
 		}
 
-		name := strings.TrimRight(f, ".json")
+		name := strings.TrimSuffix(f, ".json")
 		names = append(names, name)
 	}
 
@@ -118,7 +118,7 @@ func dashboardBuiltinImport(c *gin.Context) {
 	var f dashboardBuiltinImportForm
 	ginx.BindJSON(c, &f)
 
-	dirpath := config.C.BuiltinAlertsDir
+	dirpath := config.C.BuiltinDashboardsDir
 	if dirpath == "" {
 		dirpath = path.Join(runner.Cwd, "etc", "dashboards")
 	}

@@ -1,95 +1,11 @@
 [
     {
-      "name": "inode资源不足-使用率超过90",
-      "note": "",
-      "severity": 2,
-      "disabled": 0,
-      "prom_for_duration": 60,
-      "prom_ql": "(100 - ((node_filesystem_files_free * 100) / node_filesystem_files))>90",
-      "prom_eval_interval": 15,
-      "enable_stime": "00:00",
-      "enable_etime": "23:59",
-      "enable_days_of_week": [
-        "1",
-        "2",
-        "3",
-        "4",
-        "5",
-        "6",
-        "0"
-      ],
-      "enable_in_bg": 0,
-      "notify_recovered": 1,
-      "notify_channels": [],
-      "notify_repeat_step": 60,
-      "recover_duration": 0,
-      "callbacks": [],
-      "runbook_url": "",
-      "append_tags": []
-    },
-    {
-      "name": "内存资源不足-利用率大于75%",
-      "note": "需要扩容或者升级配置了",
-      "severity": 2,
-      "disabled": 0,
-      "prom_for_duration": 60,
-      "prom_ql": "(node_memory_MemTotal_bytes - node_memory_MemFree_bytes - (node_memory_Cached_bytes + node_memory_Buffers_bytes))/node_memory_MemTotal_bytes*100 > 75",
-      "prom_eval_interval": 15,
-      "enable_stime": "00:00",
-      "enable_etime": "23:59",
-      "enable_days_of_week": [
-        "1",
-        "2",
-        "3",
-        "4",
-        "5",
-        "6",
-        "0"
-      ],
-      "enable_in_bg": 0,
-      "notify_recovered": 1,
-      "notify_channels": [],
-      "notify_repeat_step": 60,
-      "recover_duration": 0,
-      "callbacks": [],
-      "runbook_url": "",
-      "append_tags": []
-    },
-    {
-      "name": "文件句柄不足-使用率超过90%",
-      "note": "可以将文件句柄limit调大，或者扩容",
-      "severity": 2,
-      "disabled": 0,
-      "prom_for_duration": 60,
-      "prom_ql": "(node_filefd_allocated{instance=\"$node\"}/node_filefd_maximum{instance=\"$node\"}*100) > 90",
-      "prom_eval_interval": 15,
-      "enable_stime": "00:00",
-      "enable_etime": "23:59",
-      "enable_days_of_week": [
-        "1",
-        "2",
-        "3",
-        "4",
-        "5",
-        "6",
-        "0"
-      ],
-      "enable_in_bg": 0,
-      "notify_recovered": 1,
-      "notify_channels": [],
-      "notify_repeat_step": 60,
-      "recover_duration": 0,
-      "callbacks": [],
-      "runbook_url": "",
-      "append_tags": []
-    },
-    {
-      "name": "某磁盘无法正常读写",
+      "name": "Elastic Cluster Red status",
       "note": "",
       "severity": 1,
       "disabled": 0,
-      "prom_for_duration": 60,
-      "prom_ql": "(node_filesystem_device_error{instance=\"$node\",mountpoint!~\"/var/lib/.*\",mountpoint!~\"/run.*\"}) > 0",
+      "prom_for_duration": 0,
+      "prom_ql": " elasticsearch_cluster_health_status{color=\"red\"} == 1",
       "prom_eval_interval": 15,
       "enable_stime": "00:00",
       "enable_etime": "23:59",
@@ -109,15 +25,47 @@
       "recover_duration": 0,
       "callbacks": [],
       "runbook_url": "",
-      "append_tags": []
+      "append_tags": [
+        "alertname=ElasticsearchClusterRed"
+      ]
     },
     {
-      "name": "磁盘需要清理了-利用率达到92%",
+      "name": "Elastic Cluster Yellow status",
+      "note": "",
+      "severity": 2,
+      "disabled": 0,
+      "prom_for_duration": 0,
+      "prom_ql": "elasticsearch_cluster_health_status{color=\"yellow\"} == 1",
+      "prom_eval_interval": 15,
+      "enable_stime": "00:00",
+      "enable_etime": "23:59",
+      "enable_days_of_week": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "0"
+      ],
+      "enable_in_bg": 0,
+      "notify_recovered": 1,
+      "notify_channels": [],
+      "notify_repeat_step": 60,
+      "recover_duration": 0,
+      "callbacks": [],
+      "runbook_url": "",
+      "append_tags": [
+        "alertname=ElasticsearchClusterYellow"
+      ]
+    },
+    {
+      "name": "Elasticsearch disk out of space of the instance",
       "note": "",
       "severity": 1,
       "disabled": 0,
-      "prom_for_duration": 60,
-      "prom_ql": "(100 - ((node_filesystem_avail_bytes * 100) / node_filesystem_size_bytes) ) > 92 ",
+      "prom_for_duration": 120,
+      "prom_ql": "elasticsearch_filesystem_data_available_bytes / elasticsearch_filesystem_data_size_bytes * 100 < 10",
       "prom_eval_interval": 15,
       "enable_stime": "00:00",
       "enable_etime": "23:59",
@@ -137,15 +85,17 @@
       "recover_duration": 0,
       "callbacks": [],
       "runbook_url": "",
-      "append_tags": []
+      "append_tags": [
+        "alertname=ElasticsearchDiskOutOfSpace"
+      ]
     },
     {
-      "name": "系统conntrack需要调整-使用率超过80%",
+      "name": "Elasticsearch disk space low of the instance",
       "note": "",
       "severity": 2,
       "disabled": 0,
-      "prom_for_duration": 60,
-      "prom_ql": "node_nf_conntrack_entries / node_nf_conntrack_entries_limit*100 > 80",
+      "prom_for_duration": 120,
+      "prom_ql": "elasticsearch_filesystem_data_available_bytes / elasticsearch_filesystem_data_size_bytes * 100 < 20",
       "prom_eval_interval": 15,
       "enable_stime": "00:00",
       "enable_etime": "23:59",
@@ -165,15 +115,47 @@
       "recover_duration": 0,
       "callbacks": [],
       "runbook_url": "",
-      "append_tags": []
+      "append_tags": [
+        "alertname=ElasticsearchDiskSpaceLow"
+      ]
     },
     {
-      "name": "系统出现oom",
+      "name": "Elasticsearch Heap Usage Too High of the instance",
+      "note": "",
+      "severity": 1,
+      "disabled": 0,
+      "prom_for_duration": 120,
+      "prom_ql": "(elasticsearch_jvm_memory_used_bytes{area=\"heap\"} / elasticsearch_jvm_memory_max_bytes{area=\"heap\"}) * 100 > 90",
+      "prom_eval_interval": 15,
+      "enable_stime": "00:00",
+      "enable_etime": "23:59",
+      "enable_days_of_week": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "0"
+      ],
+      "enable_in_bg": 0,
+      "notify_recovered": 1,
+      "notify_channels": [],
+      "notify_repeat_step": 60,
+      "recover_duration": 0,
+      "callbacks": [],
+      "runbook_url": "",
+      "append_tags": [
+        "alertname=ElasticsearchHeapUsageTooHigh"
+      ]
+    },
+    {
+      "name": "Elasticsearch Heap Usage warning of the instance",
       "note": "",
       "severity": 2,
       "disabled": 0,
-      "prom_for_duration": 60,
-      "prom_ql": "increase(node_vmstat_oom_kill[1m]) > 0",
+      "prom_for_duration": 120,
+      "prom_ql": "(elasticsearch_jvm_memory_used_bytes{area=\"heap\"} / elasticsearch_jvm_memory_max_bytes{area=\"heap\"}) * 100 > 80",
       "prom_eval_interval": 15,
       "enable_stime": "00:00",
       "enable_etime": "23:59",
@@ -193,15 +175,17 @@
       "recover_duration": 0,
       "callbacks": [],
       "runbook_url": "",
-      "append_tags": []
+      "append_tags": [
+        "alertname=ElasticsearchHeapUsageWarning"
+      ]
     },
     {
-      "name": "网卡入方向丢包",
+      "name": "Elasticsearch initializing shards of the instance",
       "note": "",
       "severity": 2,
       "disabled": 0,
-      "prom_for_duration": 60,
-      "prom_ql": "rate(node_network_receive_drop_total{device=~\"e.*\"}[1m]) > 3",
+      "prom_for_duration": 900,
+      "prom_ql": "elasticsearch_cluster_health_initializing_shards > 0",
       "prom_eval_interval": 15,
       "enable_stime": "00:00",
       "enable_etime": "23:59",
@@ -221,15 +205,17 @@
       "recover_duration": 0,
       "callbacks": [],
       "runbook_url": "",
-      "append_tags": []
+      "append_tags": [
+        "alertname=ElasticsearchInitializingShards"
+      ]
     },
     {
-      "name": "网卡出方向丢包",
+      "name": "Elasticsearch no new documents of the instance",
       "note": "",
       "severity": 2,
       "disabled": 0,
-      "prom_for_duration": 60,
-      "prom_ql": "rate(node_network_transmit_drop_total{device=~\"e.*\"}[1m]) > 3",
+      "prom_for_duration": 300,
+      "prom_ql": "rate(elasticsearch_indices_docs{es_data_node=\"true\"}[5m]) == 0",
       "prom_eval_interval": 15,
       "enable_stime": "00:00",
       "enable_etime": "23:59",
@@ -249,15 +235,17 @@
       "recover_duration": 0,
       "callbacks": [],
       "runbook_url": "",
-      "append_tags": []
+      "append_tags": [
+        "alertname=ElasticsearchNoNewDocuments"
+      ]
     },
     {
-      "name": "计算资源不足-机器loadavg1大于15",
-      "note": "需要扩容或者升级配置了",
+      "name": "Elasticsearch pending tasks of the instance",
+      "note": "",
       "severity": 2,
       "disabled": 0,
-      "prom_for_duration": 60,
-      "prom_ql": "node_load1>15",
+      "prom_for_duration": 900,
+      "prom_ql": "elasticsearch_cluster_health_number_of_pending_tasks > 0",
       "prom_eval_interval": 15,
       "enable_stime": "00:00",
       "enable_etime": "23:59",
@@ -277,15 +265,17 @@
       "recover_duration": 0,
       "callbacks": [],
       "runbook_url": "",
-      "append_tags": []
+      "append_tags": [
+        "alertname=ElasticsearchPendingTasks"
+      ]
     },
     {
-      "name": "运行进程数过多-超过3000",
-      "note": "建议扩容",
-      "severity": 2,
+      "name": "Elasticsearch relocation shards of the instance",
+      "note": "",
+      "severity": 1,
       "disabled": 0,
-      "prom_for_duration": 60,
-      "prom_ql": "node_procs_running > 3000",
+      "prom_for_duration": 900,
+      "prom_ql": "elasticsearch_cluster_health_relocating_shards > 0",
       "prom_eval_interval": 15,
       "enable_stime": "00:00",
       "enable_etime": "23:59",
@@ -305,6 +295,98 @@
       "recover_duration": 0,
       "callbacks": [],
       "runbook_url": "",
-      "append_tags": []
+      "append_tags": [
+        "alertname=ElasticsearchRelocationShards"
+      ]
+    },
+    {
+      "name": "Elasticsearch unassigned shards of the instance",
+      "note": "",
+      "severity": 1,
+      "disabled": 0,
+      "prom_for_duration": 0,
+      "prom_ql": "elasticsearch_cluster_health_unassigned_shards > 0",
+      "prom_eval_interval": 15,
+      "enable_stime": "00:00",
+      "enable_etime": "23:59",
+      "enable_days_of_week": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "0"
+      ],
+      "enable_in_bg": 0,
+      "notify_recovered": 1,
+      "notify_channels": [],
+      "notify_repeat_step": 60,
+      "recover_duration": 0,
+      "callbacks": [],
+      "runbook_url": "",
+      "append_tags": [
+        "alertname=ElasticsearchUnassignedShards"
+      ]
+    },
+    {
+      "name": "Elasticsearch Unhealthy Data Nodes",
+      "note": "",
+      "severity": 1,
+      "disabled": 0,
+      "prom_for_duration": 0,
+      "prom_ql": "elasticsearch_cluster_health_number_of_data_nodes < number_of_data_nodes",
+      "prom_eval_interval": 15,
+      "enable_stime": "00:00",
+      "enable_etime": "23:59",
+      "enable_days_of_week": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "0"
+      ],
+      "enable_in_bg": 0,
+      "notify_recovered": 1,
+      "notify_channels": [],
+      "notify_repeat_step": 60,
+      "recover_duration": 0,
+      "callbacks": [],
+      "runbook_url": "",
+      "append_tags": [
+        "alertname=ElasticsearchHealthyDataNodes"
+      ]
+    },
+    {
+      "name": "Elasticsearch Unhealthy Nodes",
+      "note": "",
+      "severity": 1,
+      "disabled": 0,
+      "prom_for_duration": 0,
+      "prom_ql": " elasticsearch_cluster_health_number_of_nodes < number_of_nodes",
+      "prom_eval_interval": 15,
+      "enable_stime": "00:00",
+      "enable_etime": "23:59",
+      "enable_days_of_week": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "0"
+      ],
+      "enable_in_bg": 0,
+      "notify_recovered": 1,
+      "notify_channels": [],
+      "notify_repeat_step": 60,
+      "recover_duration": 0,
+      "callbacks": [],
+      "runbook_url": "",
+      "append_tags": [
+        "alertname=ElasticsearchHealthyNodes"
+      ]
     }
   ]

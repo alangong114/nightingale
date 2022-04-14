@@ -6,13 +6,15 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"sync"
 	"time"
+
+	cmap "github.com/orcaman/concurrent-map"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/snappy"
 	"github.com/prometheus/client_golang/api"
 	"github.com/prometheus/prometheus/prompb"
-	"github.com/toolkits/pkg/container/list"
 	"github.com/toolkits/pkg/logger"
 )
 
@@ -44,7 +46,7 @@ type WriterType struct {
 	Client api.Client
 }
 
-func (w WriterType) Write(items []*prompb.TimeSeries) {
+func (w WriterType) Write(items []*prompb.TimeSeries, headers ...map[string]string) {
 	if len(items) == 0 {
 		return
 	}
@@ -59,13 +61,13 @@ func (w WriterType) Write(items []*prompb.TimeSeries) {
 		return
 	}
 
-	if err := w.Post(snappy.Encode(nil, data)); err != nil {
+	if err := w.Post(snappy.Encode(nil, data), headers...); err != nil {
 		logger.Warningf("post to %s got error: %v", w.Opts.Url, err)
 		logger.Warning("example timeseries:", items[0].String())
 	}
 }
 
-func (w WriterType) Post(req []byte) error {
+func (w WriterType) Post(req []byte, headers ...map[string]string) error {
 	httpReq, err := http.NewRequest("POST", w.Opts.Url, bytes.NewReader(req))
 	if err != nil {
 		logger.Warningf("create remote write request got error: %s", err.Error())
@@ -76,6 +78,12 @@ func (w WriterType) Post(req []byte) error {
 	httpReq.Header.Set("Content-Type", "application/x-protobuf")
 	httpReq.Header.Set("User-Agent", "n9e")
 	httpReq.Header.Set("X-Prometheus-Remote-Write-Version", "0.1.0")
+
+	if len(headers) > 0 {
+		for k, v := range headers[0] {
+			httpReq.Header.Set(k, v)
+		}
+	}
 
 	if w.Opts.BasicAuthUser != "" {
 		httpReq.SetBasicAuth(w.Opts.BasicAuthUser, w.Opts.BasicAuthPass)
@@ -97,57 +105,119 @@ func (w WriterType) Post(req []byte) error {
 
 type WritersType struct {
 	globalOpt GlobalOpt
-	m         map[string]WriterType
-	queue     *list.SafeListLimited
+	backends  map[string]WriterType
+	chans     cmap.ConcurrentMap
+	sync.RWMutex
 }
 
 func (ws *WritersType) Put(name string, writer WriterType) {
-	ws.m[name] = writer
+	ws.backends[name] = writer
 }
 
-func (ws *WritersType) PushQueue(vs []interface{}) bool {
-	return ws.queue.PushFrontBatch(vs)
-}
-
-func (ws *WritersType) Writes() {
-	batch := ws.globalOpt.QueuePopSize
-	if batch <= 0 {
-		batch = 2000
+// PushSample Push one sample to chan, hash by ident
+// @Author: quzhihao
+func (ws *WritersType) PushSample(ident string, v interface{}) {
+	if !ws.chans.Has(ident) {
+		ws.Lock()
+		// important: check twice
+		if !ws.chans.Has(ident) {
+			c := make(chan *prompb.TimeSeries, Writers.globalOpt.QueueMaxSize)
+			ws.chans.Set(ident, c)
+			go ws.StartConsumer(ident, c)
+		}
+		ws.Unlock()
 	}
 
-	duration := time.Duration(ws.globalOpt.SleepInterval) * time.Millisecond
+	c, ok := ws.chans.Get(ident)
+	if ok {
+		ch := c.(chan *prompb.TimeSeries)
+		select {
+		case ch <- v.(*prompb.TimeSeries):
+		default:
+			logger.Warningf("Write channel(%s) full, current channel size: %d", ident, len(ch))
+		}
+	}
+}
+
+// StartConsumer every ident channel has a consumer, start it
+// @Author: quzhihao
+func (ws *WritersType) StartConsumer(ident string, ch chan *prompb.TimeSeries) {
+	var (
+		batch        = ws.globalOpt.QueuePopSize
+		max          = ws.globalOpt.QueueMaxSize
+		batchCounter int
+		closeCounter int
+		series       = make([]*prompb.TimeSeries, 0, batch)
+	)
+
+	logger.Infof("Starting channel(%s) consumer, max size:%d, batch:%d", ident, max, batch)
 
 	for {
-		items := ws.queue.PopBackBy(batch)
-		count := len(items)
-		if count == 0 {
-			time.Sleep(duration)
-			continue
-		}
-
-		series := make([]*prompb.TimeSeries, 0, count)
-		for i := 0; i < count; i++ {
-			item, ok := items[i].(*prompb.TimeSeries)
-			if !ok {
-				// in theory, it can be converted successfully
-				continue
-			}
+		select {
+		case item := <-ch:
+			// has data, no need to close
+			closeCounter = 0
 			series = append(series, item)
-		}
 
-		if len(series) == 0 {
-			continue
-		}
+			batchCounter++
+			if batchCounter >= ws.globalOpt.QueuePopSize {
+				ws.post(ident, series)
 
-		for key := range ws.m {
-			go ws.m[key].Write(series)
+				// reset
+				batchCounter = 0
+				series = make([]*prompb.TimeSeries, 0, batch)
+			}
+		case <-time.After(time.Second):
+			if len(series) > 0 {
+				// has data, no need to close
+				closeCounter = 0
+
+				ws.post(ident, series)
+
+				// reset
+				batchCounter = 0
+				series = make([]*prompb.TimeSeries, 0, batch)
+			} else {
+				closeCounter++
+			}
+
+			if closeCounter > 3600 {
+				logger.Infof("Closing channel(%s) reason: no data for an hour", ident)
+
+				ws.Lock()
+				close(ch)
+				ws.chans.Remove(ident)
+				ws.Unlock()
+
+				logger.Infof("Closed channel(%s) reason: no data for an hour", ident)
+
+				return
+			}
 		}
 	}
+}
+
+// post post series to TSDB
+// @Author: quzhihao
+func (ws *WritersType) post(ident string, series []*prompb.TimeSeries) {
+	wg := sync.WaitGroup{}
+	wg.Add(len(ws.backends))
+
+	// maybe as backend hashstring
+	headers := map[string]string{"ident": ident}
+	for key := range ws.backends {
+		go func(key string) {
+			defer wg.Done()
+			ws.backends[key].Write(series, headers)
+		}(key)
+	}
+
+	wg.Wait()
 }
 
 func NewWriters() WritersType {
 	return WritersType{
-		m: make(map[string]WriterType),
+		backends: make(map[string]WriterType),
 	}
 }
 
@@ -155,7 +225,7 @@ var Writers = NewWriters()
 
 func Init(opts []Options, globalOpt GlobalOpt) error {
 	Writers.globalOpt = globalOpt
-	Writers.queue = list.NewSafeListLimited(globalOpt.QueueMaxSize)
+	Writers.chans = cmap.New()
 
 	for i := 0; i < len(opts); i++ {
 		cli, err := api.NewClient(api.Config{
@@ -188,8 +258,6 @@ func Init(opts []Options, globalOpt GlobalOpt) error {
 
 		Writers.Put(opts[i].Url, writer)
 	}
-
-	go Writers.Writes()
 
 	return nil
 }
